@@ -20,7 +20,7 @@ Iterator的遍历过程是这样的。
 
 每一次调用`next`方法，都会返回数据结构的当前成员的信息。具体来说，就是返回一个包含`value`和`done`两个属性的对象。其中，`value`属性是当前成员的值，`done`属性是一个布尔值，表示遍历是否结束。
 
-下面是一个模拟next方法返回值的例子。
+下面是一个模拟`next`方法返回值的例子。
 
 ```javascript
 var it = makeIterator(['a', 'b']);
@@ -29,15 +29,15 @@ it.next() // { value: "a", done: false }
 it.next() // { value: "b", done: false }
 it.next() // { value: undefined, done: true }
 
-function makeIterator(array){
+function makeIterator(array) {
   var nextIndex = 0;
   return {
-    next: function(){
+    next: function() {
       return nextIndex < array.length ?
         {value: array[nextIndex++], done: false} :
         {value: undefined, done: true};
     }
-  }
+  };
 }
 ```
 
@@ -52,15 +52,15 @@ function makeIterator(array){
 对于遍历器对象来说，`done: false`和`value: undefined`属性都是可以省略的，因此上面的`makeIterator`函数可以简写成下面的形式。
 
 ```javascript
-function makeIterator(array){
+function makeIterator(array) {
   var nextIndex = 0;
   return {
-    next: function(){
+    next: function() {
       return nextIndex < array.length ?
         {value: array[nextIndex++]} :
         {done: true};
     }
-  }
+  };
 }
 ```
 
@@ -74,14 +74,14 @@ it.next().value // '1'
 it.next().value // '2'
 // ...
 
-function idMaker(){
+function idMaker() {
   var index = 0;
 
   return {
-    next: function(){
+    next: function() {
       return {value: index++, done: false};
     }
-  }
+  };
 }
 ```
 
@@ -110,7 +110,7 @@ interface IterationResult {
 
 Iterator接口的目的，就是为所有数据结构，提供了一种统一的访问机制，即`for...of`循环（详见下文）。当使用`for...of`循环遍历某种数据结构时，该循环会自动去寻找Iterator接口。
 
-ES6规定，默认的Iterator接口部署在数据结构的`Symbol.iterator`属性，或者说，一个数据结构只要具有`Symbol.iterator`属性，就可以认为是“可遍历的”（iterable）。调用`Symbol.iterator`方法，就会得到当前数据结构默认的遍历器生成函数。`Symbol.iterator`本身是一个表达式，返回Symbol对象的iterator属性，这是一个预定义好的、类型为Symbol的特殊值，所以要放在方括号内（请参考Symbol一章）。
+ES6规定，默认的Iterator接口部署在数据结构的`Symbol.iterator`属性，或者说，一个数据结构只要具有`Symbol.iterator`属性，就可以认为是“可遍历的”（iterable）。调用`Symbol.iterator`方法，就会得到当前数据结构默认的遍历器生成函数。`Symbol.iterator`本身是一个表达式，返回Symbol对象的`iterator`属性，这是一个预定义好的、类型为Symbol的特殊值，所以要放在方括号内（请参考Symbol一章）。
 
 在ES6中，有三类数据结构原生具备Iterator接口：数组、某些类似数组的对象、Set和Map结构。
 
@@ -166,32 +166,30 @@ for (var value of range(0, 3)) {
 下面是通过遍历器实现指针结构的例子。
 
 ```javascript
-function Obj(value){
+function Obj(value) {
   this.value = value;
   this.next = null;
 }
 
-Obj.prototype[Symbol.iterator] = function(){
-
+Obj.prototype[Symbol.iterator] = function() {
   var iterator = {
     next: next
   };
 
   var current = this;
 
-  function next(){
-    if (current){
+  function next() {
+    if (current) {
       var value = current.value;
-      var done = current == null;
       current = current.next;
       return {
-        done: done,
+        done: false,
         value: value
-      }
+      };
     } else {
       return {
         done: true
-      }
+      };
     }
   }
   return iterator;
@@ -205,7 +203,7 @@ one.next = two;
 two.next = three;
 
 for (var i of one){
-  console.log(i)
+  console.log(i);
 }
 // 1
 // 2

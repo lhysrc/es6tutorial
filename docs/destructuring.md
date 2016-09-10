@@ -96,7 +96,7 @@ const [v1, v2, ..., vN ] = array;
 对于Set结构，也可以使用数组的解构赋值。
 
 ```javascript
-let [x, y, z] = new Set(["a", "b", "c"])
+let [x, y, z] = new Set(["a", "b", "c"]);
 x // "a"
 ```
 
@@ -126,8 +126,8 @@ sixth // 5
 var [foo = true] = [];
 foo // true
 
-[x, y = 'b'] = ['a'] // x='a', y='b'
-[x, y = 'b'] = ['a', undefined] // x='a', y='b'
+[x, y = 'b'] = ['a']; // x='a', y='b'
+[x, y = 'b'] = ['a', undefined]; // x='a', y='b'
 ```
 
 注意，ES6内部使用严格相等运算符（`===`），判断一个位置是否有值。所以，如果一个数组成员不严格等于`undefined`，默认值是不会生效的。
@@ -145,7 +145,7 @@ x // null
 如果默认值是一个表达式，那么这个表达式是惰性求值的，即只有在用到的时候，才会求值。
 
 ```javascript
-function f(){
+function f() {
   console.log('aaa');
 }
 
@@ -200,7 +200,7 @@ baz // undefined
 如果变量名与属性名不一致，必须写成下面这样。
 
 ```javascript
-var { foo: baz } = { foo: "aaa", bar: "bbb" };
+var { foo: baz } = { foo: 'aaa', bar: 'bbb' };
 baz // "aaa"
 
 let obj = { first: 'hello', last: 'world' };
@@ -225,7 +225,7 @@ foo // error: foo is not defined
 
 上面代码中，真正被赋值的是变量`baz`，而不是模式`foo`。
 
-注意，采用这种写法时，变量的声明和赋值是一体的。对于let和const来说，变量不能重新声明，所以一旦赋值的变量以前声明过，就会报错。
+注意，采用这种写法时，变量的声明和赋值是一体的。对于`let`和`const`来说，变量不能重新声明，所以一旦赋值的变量以前声明过，就会报错。
 
 ```javascript
 let foo;
@@ -235,7 +235,7 @@ let baz;
 let {bar: baz} = {bar: 1}; // SyntaxError: Duplicate declaration "baz"
 ```
 
-上面代码中，解构赋值的变量都会重新声明，所以报错了。不过，因为`var`命令允许重新声明，所以这个错误只会在使用`let`和`const`命令时出现。如果没有第二个let命令，上面的代码就不会报错。
+上面代码中，解构赋值的变量都会重新声明，所以报错了。不过，因为`var`命令允许重新声明，所以这个错误只会在使用`let`和`const`命令时出现。如果没有第二个`let`命令，上面的代码就不会报错。
 
 ```javascript
 let foo;
@@ -245,13 +245,15 @@ let baz;
 ({bar: baz} = {bar: 1}); // 成功
 ```
 
+上面代码中，`let`命令下面一行的圆括号是必须的，否则会报错。因为解析器会将起首的大括号，理解成一个代码块，而不是赋值语句。
+
 和数组一样，解构也可以用于嵌套结构的对象。
 
 ```javascript
 var obj = {
   p: [
-    "Hello",
-    { y: "World" }
+    'Hello',
+    { y: 'World' }
   ]
 };
 
@@ -302,7 +304,13 @@ var {x, y = 5} = {x: 1};
 x // 1
 y // 5
 
-var { message: msg = "Something went wrong" } = {};
+var {x:y = 3} = {};
+y // 3
+
+var {x:y = 3} = {x: 5};
+y // 5
+
+var { message: msg = 'Something went wrong' } = {};
 msg // "Something went wrong"
 ```
 
@@ -321,7 +329,7 @@ x // null
 如果解构失败，变量的值等于`undefined`。
 
 ```javascript
-var {foo} = {bar: 'baz'}
+var {foo} = {bar: 'baz'};
 foo // undefined
 ```
 
@@ -329,7 +337,7 @@ foo // undefined
 
 ```javascript
 // 报错
-var {foo: {bar}} = {baz: 'baz'}
+var {foo: {bar}} = {baz: 'baz'};
 ```
 
 上面代码中，等号左边对象的`foo`属性，对应一个子对象。该子对象的`bar`属性，解构时会报错。原因很简单，因为`foo`这时等于`undefined`，再取子属性就会报错，请看下面的代码。
@@ -343,7 +351,6 @@ _tmp.foo.bar // 报错
 
 ```javascript
 // 错误的写法
-
 var x;
 {x} = {x: 1};
 // SyntaxError: syntax error
@@ -375,6 +382,17 @@ let { log, sin, cos } = Math;
 ```
 
 上面代码将`Math`对象的对数、正弦、余弦三个方法，赋值到对应的变量上，使用起来就会方便很多。
+
+由于数组本质是特殊的对象，因此可以对数组进行对象属性的解构。
+
+```javascript
+var arr = [1, 2, 3];
+var {0 : first, [arr.length - 1] : last} = arr;
+first // 1
+last // 3
+```
+
+上面代码对数组进行对象结构。数组`arr`的`0`键对应的值是`1`，`[arr.length - 1]`就是`2`键，对应的值是`3`。方括号这种写法，属于“属性名表达式”，参见《对象的扩展》一章。
 
 ## 字符串的解构赋值
 
@@ -426,15 +444,15 @@ function add([x, y]){
   return x + y;
 }
 
-add([1, 2]) // 3
+add([1, 2]); // 3
 ```
 
-上面代码中，函数`add`的参数实际上不是一个数组，而是通过解构得到的变量`x`和`y`。
+上面代码中，函数`add`的参数表面上是一个数组，但在传入参数的那一刻，数组参数就被解构成变量`x`和`y`。对于函数内部的代码来说，它们能感受到的参数就是`x`和`y`。
 
 下面是另一个例子。
 
 ```javascript
-[[1, 2], [3, 4]].map(([a, b]) => a + b)
+[[1, 2], [3, 4]].map(([a, b]) => a + b);
 // [ 3, 7 ]
 ```
 
@@ -471,7 +489,7 @@ move(); // [0, 0]
 `undefined`就会触发函数参数的默认值。
 
 ```javascript
-[1, undefined, 3].map((x = 'yes') => x)
+[1, undefined, 3].map((x = 'yes') => x);
 // [ 1, 'yes', 3 ]
 ```
 
@@ -487,12 +505,17 @@ move(); // [0, 0]
 
 以下三种解构赋值不得使用圆括号。
 
-（1）变量声明语句中，模式不能带有圆括号。
+（1）变量声明语句中，不能带有圆括号。
 
 ```javascript
 // 全部报错
 var [(a)] = [1];
-var { x: (c) } = {};
+
+var {x: (c)} = {};
+var ({x: c}) = {};
+var {(x: c)} = {};
+var {(x): c} = {};
+
 var { o: ({ p: p }) } = { o: { p: 2 } };
 ```
 
@@ -507,7 +530,7 @@ var { o: ({ p: p }) } = { o: { p: 2 } };
 function f([(z)]) { return z; }
 ```
 
-（3）不能将整个模式，或嵌套模式中的一层，放在圆括号之中。
+（3）赋值语句中，不能将整个模式，或嵌套模式中的一层，放在圆括号之中。
 
 ```javascript
 // 全部报错
@@ -515,7 +538,7 @@ function f([(z)]) { return z; }
 ([a]) = [5];
 ```
 
-上面代码将整个模式放在模式之中，导致报错。
+上面代码将整个模式放在圆括号之中，导致报错。
 
 ```javascript
 // 报错
@@ -546,7 +569,7 @@ function f([(z)]) { return z; }
 [x, y] = [y, x];
 ```
 
-上面代码交换变量x和y的值，这样的写法不仅简洁，而且易读，语义非常清晰。
+上面代码交换变量`x`和`y`的值，这样的写法不仅简洁，而且易读，语义非常清晰。
 
 **（2）从函数返回多个值**
 
@@ -578,11 +601,11 @@ var { foo, bar } = example();
 ```javascript
 // 参数是一组有次序的值
 function f([x, y, z]) { ... }
-f([1, 2, 3])
+f([1, 2, 3]);
 
 // 参数是一组无次序的值
 function f({x, y, z}) { ... }
-f({z: 3, y: 2, x: 1})
+f({z: 3, y: 2, x: 1});
 ```
 
 **（4）提取JSON数据**
@@ -594,12 +617,12 @@ var jsonData = {
   id: 42,
   status: "OK",
   data: [867, 5309]
-}
+};
 
 let { id, status, data: number } = jsonData;
 
-console.log(id, status, number)
-// 42, OK, [867, 5309]
+console.log(id, status, number);
+// 42, "OK", [867, 5309]
 ```
 
 上面代码可以快速提取JSON数据的值。
@@ -607,7 +630,6 @@ console.log(id, status, number)
 **（5）函数参数的默认值**
 
 ```javascript
-
 jQuery.ajax = function (url, {
   async = true,
   beforeSend = function () {},
@@ -619,7 +641,6 @@ jQuery.ajax = function (url, {
 }) {
   // ... do stuff
 };
-
 ```
 
 指定参数的默认值，就避免了在函数体内部再写`var foo = config.foo || 'default foo';`这样的语句。
@@ -659,7 +680,5 @@ for (let [,value] of map) {
 加载模块时，往往需要指定输入那些方法。解构赋值使得输入语句非常清晰。
 
 ```javascript
-
 const { SourceMapConsumer, SourceNode } = require("source-map");
-
 ```

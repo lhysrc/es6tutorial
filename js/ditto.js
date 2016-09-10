@@ -12,9 +12,34 @@ var ditto = {
     edit_button: true,
     back_to_top_button: true,
     save_progress: true, // 保存阅读进度
+    search_bar: true,
 
     // initialize function
     run: initialize
+};
+
+/**
+ * 获取当前hash
+ *
+ * @param {string} hash 要解析的hash，默认取当前页面的hash，如： nav#类目 => {nav:nav, anchor:类目}
+ * @description 分导航和页面锚点
+ * @return {Object} {nav:导航, anchor:页面锚点}
+ */
+var getHash = function (hash) {
+  hash = hash || window.location.hash.substr(1);
+
+  if (!hash) {
+    return {
+      nav: '',
+      anchor: ''
+    }
+  }
+
+  hash = hash.split('#');
+  return {
+    nav: hash[0],
+    anchor: decodeURIComponent(hash[1] || '')
+  }
 };
 
 var disqusCode = '<h3>留言</h3><div id="disqus_thread"></div>';
@@ -40,8 +65,13 @@ function initialize() {
 }
 
 function init_sidebar_section() {
-    $.get(ditto.sidebar_file, function(data) {
+    $.get(ditto.sidebar_file, function (data) {
         $(ditto.sidebar_id).html(marked(data));
+
+        if (ditto.search_bar) {
+           init_searchbar();
+        }
+
         // 初始化内容数组
         var menuOL = $(ditto.sidebar_id + ' ol');
         menuOL.attr('start', 0);
@@ -50,24 +80,57 @@ function init_sidebar_section() {
             menu.push(this.href.slice(this.href.indexOf('#')));
         });
         $('#pageup').on('click', function() {
+            var hash = getHash().nav;
             for (var i = 0; i < menu.length; i++) {
-                if (location.hash === '') break;
-                if (menu[i] === location.hash) break;
+                if (hash === '') break;
+                if (menu[i] === '#' + hash) break;
             }
             location.hash = menu[i - 1]
         });
         $('#pagedown').on('click', function() {
+            var hash = getHash().nav;
             for (var i = 0; i < menu.length; i++) {
-                if (location.hash === '') break;
-                if (menu[i] === location.hash) break;
+                if (hash === '') break;
+                if (menu[i] === '#' + hash) break;
             }
             location.hash = menu[i + 1];
         });
     }, "text").fail(function() {
         alert("Opps! can't find the sidebar file to display!");
     });
-
 }
+
+function init_searchbar() {
+  var search = '<form class="searchBox" onSubmit="return searchbar_listener()">' +
+    '<input name="search" type="search">' +
+    '<input type="image" class="searchButton" src="images/magnifier.jpg" alt="Search" />' +
+//    '<a class="searchLink" href="#" target="_blank"><img src="images/magnifier.jpg"></a>' +
+    '</form>';
+  $(ditto.sidebar_id).find('h2').first().before($(search));
+  // $('input.searchButton').click(searchbar_listener);
+  // $('input[name=search]').keydown(searchbar_listener);
+}
+
+function searchbar_listener(event) {
+    // event.preventDefault();
+    var q = $('input[name=search]').val();
+    if (q !== '') {
+      var url = 'https://github.com/ruanyf/es6tutorial/search?utf8=✓&q=' + encodeURIComponent(q);
+      window.open(url, '_blank');
+      win.focus();
+    }
+    return false;
+  /*
+  if (event.which === 13) {
+    var q = $('input[name=search]').val();
+    if (q !== '') {
+      var url = 'https://github.com/ruanyf/es6tutorial/search?utf8=✓&q=' + encodeURIComponent(q);
+      location.href = url;
+    }
+  }
+  */
+}
+
 
 function init_back_to_top_button() {
   $(ditto.back_to_top_id).show();
@@ -89,23 +152,24 @@ function goSection(sectionId){
 }
 
 function init_edit_button() {
-    if (ditto.base_url === null) {
-        alert("Error! You didn't set 'base_url' when calling ditto.run()!");
+  if (ditto.base_url === null) {
+    alert("Error! You didn't set 'base_url' when calling ditto.run()!");
+  } else {
+    $(ditto.edit_id).show();
+    $(ditto.edit_id).on("click", function() {
+      var hash = location.hash.replace("#", "/");
+      if (/#.*$/.test(hash)) {
+        hash = hash.replace(/#.*$/, '');
+      }
+      if (hash === "") {
+        hash = "/" + ditto.index.replace(".md", "");
+      }
 
-    } else {
-        $(ditto.edit_id).show();
-        $(ditto.edit_id).on("click", function() {
-            var hash = location.hash.replace("#", "/");
-
-            if (hash === "") {
-                hash = "/" + ditto.index.replace(".md", "");
-            }
-
-            window.open(ditto.base_url + hash + ".md");
-            // open is better than redirecting, as the previous page history
-            // with redirect is a bit messed up
-        });
-    }
+      window.open(ditto.base_url + hash + ".md");
+      // open is better than redirecting, as the previous page history
+      // with redirect is a bit messed up
+    });
+  }
 }
 
 function replace_symbols(text) {
@@ -223,7 +287,7 @@ function show_loading() {
   return loading;
 }
 
-function router() {	
+function router() { 
   var path = location.hash.replace(/#([^#]*)(#.*)?/, './$1');
 
   var hashArr = location.hash.split('#');
@@ -292,7 +356,7 @@ function router() {
 
     if (sectionId) {
       $('html, body').animate({
-        scrollTop: ($('#' + sectionId).offset().top)
+        scrollTop: ($('#' + decodeURI(sectionId)).offset().top)
       }, 300);
     } else {
       if (location.hash !== '' || Boolean(perc)) {
@@ -310,14 +374,13 @@ function router() {
         }
       }
     }
-
-    if (location.hash === '' || location.hash === menu[0]) {
+    if (location.hash === '' || '#' + getHash().nav === menu[0]) {
       $('#pageup').css('display', 'none');
     } else {
       $('#pageup').css('display', 'inline-block');
     }
 
-    if (location.hash === menu[(menu.length - 1)]) {
+    if ('#' + getHash().nav === menu[(menu.length - 1)]) {
       $('#pagedown').css('display', 'none');
     } else {
       $('#pagedown').css('display', 'inline-block');

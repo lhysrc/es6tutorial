@@ -35,7 +35,7 @@ obj.count = 1
 ES6原生提供Proxy构造函数，用来生成Proxy实例。
 
 ```javascript
-var proxy = new Proxy(target, handler)
+var proxy = new Proxy(target, handler);
 ```
 
 Proxy对象的所有用法，都是上面这种形式，不同的只是`handler`参数的写法。其中，`new Proxy()`表示生成一个Proxy实例，target参数表示所要拦截的目标对象，`handler`参数也是一个对象，用来定制拦截行为。
@@ -73,7 +73,7 @@ target.a // "b"
 一个技巧是将Proxy对象，设置到`object.proxy`属性，从而可以在`object`对象上调用。
 
 ```javascript
-var object = { proxy: new Proxy(target, handler) }
+var object = { proxy: new Proxy(target, handler) };
 ```
 
 Proxy实例也可以作为其他对象的原型对象。
@@ -96,21 +96,29 @@ obj.time // 35
 ```javascript
 var handler = {
   get: function(target, name) {
-    if (name === 'prototype') return Object.prototype;
-    return 'Hello, '+ name;
+    if (name === 'prototype') {
+      return Object.prototype;
+    }
+    return 'Hello, ' + name;
   },
-  apply: function(target, thisBinding, args) { return args[0]; },
-  construct: function(target, args) { return args[1]; }
+
+  apply: function(target, thisBinding, args) {
+    return args[0];
+  },
+
+  construct: function(target, args) {
+    return {value: args[1]};
+  }
 };
 
-var fproxy = new Proxy(function(x,y) {
-  return x+y;
-},  handler);
+var fproxy = new Proxy(function(x, y) {
+  return x + y;
+}, handler);
 
-fproxy(1,2); // 1
-new fproxy(1,2); // 2
-fproxy.prototype; // Object.prototype
-fproxy.foo; // 'Hello, foo'
+fproxy(1, 2) // 1
+new fproxy(1,2) // {value: 2}
+fproxy.prototype === Object.prototype // true
+fproxy.foo // "Hello, foo"
 ```
 
 下面是Proxy支持的拦截操作一览。
@@ -119,7 +127,9 @@ fproxy.foo; // 'Hello, foo'
 
 **（1）get(target, propKey, receiver)**
 
-拦截对象属性的读取，比如`proxy.foo`和`proxy['foo']`，返回类型不限。最后一个参数`receiver`可选，当`target`对象设置了`propKey`属性的`get`函数时，`receiver`对象会绑定`get`函数的`this`对象。
+拦截对象属性的读取，比如`proxy.foo`和`proxy['foo']`。
+
+最后一个参数`receiver`是一个对象，可选，参见下面`Reflect.get`的部分。
 
 **（2）set(target, propKey, value, receiver)**
 
@@ -127,51 +137,47 @@ fproxy.foo; // 'Hello, foo'
 
 **（3）has(target, propKey)**
 
-拦截`propKey in proxy`的操作，返回一个布尔值。
+拦截`propKey in proxy`的操作，以及对象的`hasOwnProperty`方法，返回一个布尔值。
 
 **（4）deleteProperty(target, propKey)**
 
 拦截`delete proxy[propKey]`的操作，返回一个布尔值。
 
-**（5）enumerate(target)**
-
-拦截`for (var x in proxy)`，返回一个遍历器。
-
-**（6）ownKeys(target)**
+**（5）ownKeys(target)**
 
 拦截`Object.getOwnPropertyNames(proxy)`、`Object.getOwnPropertySymbols(proxy)`、`Object.keys(proxy)`，返回一个数组。该方法返回对象所有自身的属性，而`Object.keys()`仅返回对象可遍历的属性。
 
-**（7）getOwnPropertyDescriptor(target, propKey)**
+**（6）getOwnPropertyDescriptor(target, propKey)**
 
 拦截`Object.getOwnPropertyDescriptor(proxy, propKey)`，返回属性的描述对象。
 
-**（8）defineProperty(target, propKey, propDesc)**
+**（7）defineProperty(target, propKey, propDesc)**
 
 拦截`Object.defineProperty(proxy, propKey, propDesc）`、`Object.defineProperties(proxy, propDescs)`，返回一个布尔值。
 
-**（9）preventExtensions(target)**
+**（8）preventExtensions(target)**
 
 拦截`Object.preventExtensions(proxy)`，返回一个布尔值。
 
-**（10）getPrototypeOf(target)**
+**（9）getPrototypeOf(target)**
 
 拦截`Object.getPrototypeOf(proxy)`，返回一个对象。
 
-**（11）isExtensible(target)**
+**（10）isExtensible(target)**
 
 拦截`Object.isExtensible(proxy)`，返回一个布尔值。
 
-**（12）setPrototypeOf(target, proto)**
+**（11）setPrototypeOf(target, proto)**
 
 拦截`Object.setPrototypeOf(proxy, proto)`，返回一个布尔值。
 
 如果目标对象是函数，那么还有两种额外操作可以拦截。
 
-**（13）apply(target, object, args)**
+**（12）apply(target, object, args)**
 
 拦截Proxy实例作为函数调用的操作，比如`proxy(...args)`、`proxy.call(object, ...args)`、`proxy.apply(...)`。
 
-**（14）construct(target, args, proxy)**
+**（13）construct(target, args)**
 
 拦截Proxy实例作为构造函数调用的操作，比如`new proxy(...args)`。
 
@@ -245,42 +251,77 @@ arr[-1] // c
 
 上面代码中，数组的位置参数是`-1`，就会输出数组的倒数最后一个成员。
 
-利用proxy，可以将读取属性的操作（`get`），转变为执行某个函数，从而实现属性的链式操作。
+利用Proxy，可以将读取属性的操作（`get`），转变为执行某个函数，从而实现属性的链式操作。
 
 ```javascript
 var pipe = (function () {
-  var pipe;
   return function (value) {
-    pipe = [];
-    return new Proxy({}, {
-      get: function (pipeObject, fnName) {
-        if (fnName == "get") {
-          return pipe.reduce(function (val, fn) {
+    var funcStack = [];
+    var oproxy = new Proxy({} , {
+      get : function (pipeObject, fnName) {
+        if (fnName === 'get') {
+          return funcStack.reduce(function (val, fn) {
             return fn(val);
-          }, value);
+          },value);
         }
-        pipe.push(window[fnName]);
-        return pipeObject;
+        funcStack.push(window[fnName]);
+        return oproxy;
       }
     });
+
+    return oproxy;
   }
 }());
 
 var double = n => n * 2;
-var pow = n => n * n;
-var reverseInt = n => n.toString().split('').reverse().join('') | 0;
+var pow    = n => n * n;
+var reverseInt = n => n.toString().split("").reverse().join("") | 0;
 
-pipe(3).double.pow.reverseInt.get
-// 63
+pipe(3).double.pow.reverseInt.get; // 63
 ```
 
 上面代码设置Proxy以后，达到了将函数名链式使用的效果。
+
+下面的例子则是利用`get`拦截，实现一个生成各种DOM节点的通用函数`dom`。
+
+```javascript
+const dom = new Proxy({}, {
+  get(target, property) {
+    return function(attrs = {}, ...children) {
+      const el = document.createElement(property);
+      for (let prop of Object.keys(attrs)) {
+        el.setAttribute(prop, attrs[prop]);
+      }
+      for (let child of children) {
+        if (typeof child === 'string') {
+          child = document.createTextNode(child);
+        }
+        el.appendChild(child);
+      }
+      return el;
+    }
+  }
+});
+
+const el = dom.div({},
+  'Hello, my name is ',
+  dom.a({href: '//example.com'}, 'Mark'),
+  '. I like:',
+  dom.ul({},
+    dom.li({}, 'The web'),
+    dom.li({}, 'Food'),
+    dom.li({}, '…actually that\'s it')
+  )
+);
+
+document.body.appendChild(el);
+```
 
 ### set()
 
 `set`方法用来拦截某个属性的赋值操作。
 
-假定Person对象有一个`age`属性，该属性应该是一个不大于200的整数，那么可以使用Proxy对象保证`age`的属性值符合要求。
+假定`Person`对象有一个`age`属性，该属性应该是一个不大于200的整数，那么可以使用`Proxy`保证`age`的属性值符合要求。
 
 ```javascript
 let validator = {
@@ -322,7 +363,7 @@ var handler = {
     invariant(key, 'set');
     return true;
   }
-}
+};
 function invariant (key, action) {
   if (key[0] === '_') {
     throw new Error(`Invalid attempt to ${action} private "${key}" property`);
@@ -347,7 +388,7 @@ var handler = {
   apply (target, ctx, args) {
     return Reflect.apply(...arguments);
   }
-}
+};
 ```
 
 `apply`方法可以接受三个参数，分别是目标对象、目标对象的上下文对象（`this`）和目标对象的参数数组。
@@ -364,8 +405,8 @@ var handler = {
 
 var p = new Proxy(target, handler);
 
-p() === 'I am the proxy';
-// true
+p()
+// "I am the proxy"
 ```
 
 上面代码中，变量`p`是Proxy的实例，当它作为函数调用时（`p()`），就会被`apply`方法拦截，返回一个字符串。
@@ -387,7 +428,7 @@ proxy.call(null, 5, 6) // 22
 proxy.apply(null, [7, 8]) // 30
 ```
 
-上面代码中，每当执行`proxy`函数，就会被`apply`方法拦截。
+上面代码中，每当执行`proxy`函数（直接调用或`call`和`apply`调用），就会被`apply`方法拦截。
 
 另外，直接调用`Reflect.apply`方法，也会被拦截。
 
@@ -397,7 +438,9 @@ Reflect.apply(proxy, null, [9, 10]) // 38
 
 ### has()
 
-`has`方法可以隐藏某些属性，不被`in`操作符发现。
+`has`方法用来拦截`HasProperty`操作，即判断对象是否具有某个属性时，这个方法会生效。典型的操作就是`in`运算符。
+
+下面的例子使用`has`方法隐藏某些属性，不被`in`运算符发现。
 
 ```javascript
 var handler = {
@@ -426,22 +469,61 @@ var p = new Proxy(obj, {
   }
 });
 
-"a" in p; // TypeError is thrown
+'a' in p // TypeError is thrown
 ```
 
 上面代码中，`obj`对象禁止扩展，结果使用`has`拦截就会报错。
 
+值得注意的是，`has`方法拦截的是`HasProperty`操作，而不是`HasOwnProperty`操作，即`has`方法不判断一个属性是对象自身的属性，还是继承的属性。由于`for...in`操作内部也会用到`HasProperty`操作，所以`has`方法在`for...in`循环时也会生效。
+
+```javascript
+let stu1 = {name: 'Owen', score: 59};
+let stu2 = {name: 'Mark', score: 99};
+
+let handler = {
+  has(target, prop) {
+    if (prop === 'score' && target[prop] < 60) {
+      console.log(`${target.name} 不及格`);
+      return false;
+    }
+    return prop in target;
+  }
+}
+
+let oproxy1 = new Proxy(stu1, handler);
+let oproxy2 = new Proxy(stu2, handler);
+
+for (let a in oproxy1) {
+  console.log(oproxy1[a]);
+}
+// Owen
+// Owen 不及格
+
+for (let b in oproxy2) {
+  console.log(oproxy2[b]);
+}
+// Mark
+// Mark 99
+```
+
+上面代码中，`for...in`循环时，`has`拦截会生效，导致不符合要求的属性被排除在`for...in`循环之外。
+
 ### construct()
 
-`construct`方法用于拦截`new`命令。
+`construct`方法用于拦截`new`命令，下面是拦截对象的写法。
 
 ```javascript
 var handler = {
-  construct (target, args) {
+  construct (target, args, newTarget) {
     return new target(...args);
   }
-}
+};
 ```
+
+`construct`方法可以接受两个参数。
+
+- `target`: 目标对象
+- `args`：构建函数的参数对象
 
 下面是一个例子。
 
@@ -458,7 +540,7 @@ new p(1).value
 // 10
 ```
 
-如果`construct`方法返回的不是对象，就会抛出错误。
+`construct`方法返回的必须是一个对象，否则会报错。
 
 ```javascript
 var p = new Proxy(function() {}, {
@@ -480,15 +562,15 @@ var handler = {
     invariant(key, 'delete');
     return true;
   }
-}
+};
 function invariant (key, action) {
   if (key[0] === '_') {
     throw new Error(`Invalid attempt to ${action} private "${key}" property`);
   }
 }
 
-var target = { _prop: 'foo' }
-var proxy = new Proxy(target, handler)
+var target = { _prop: 'foo' };
+var proxy = new Proxy(target, handler);
 delete proxy._prop
 // Error: Invalid attempt to delete private "_prop" property
 ```
@@ -502,67 +584,16 @@ delete proxy._prop
 ```javascript
 var handler = {
   defineProperty (target, key, descriptor) {
-    return false
+    return false;
   }
-}
-var target = {}
-var proxy = new Proxy(target, handler)
+};
+var target = {};
+var proxy = new Proxy(target, handler);
 proxy.foo = 'bar'
 // TypeError: proxy defineProperty handler returned false for property '"foo"'
 ```
 
 上面代码中，`defineProperty`方法返回`false`，导致添加新属性会抛出错误。
-
-### enumerate()
-
-`enumerate`方法用来拦截`for...in`循环。注意与Proxy对象的`has`方法区分，后者用来拦截`in`操作符，对`for...in`循环无效。
-
-```javascript
-var handler = {
-  enumerate (target) {
-    return Object.keys(target).filter(key => key[0] !== '_')[Symbol.iterator]();
-  }
-}
-var target = { prop: 'foo', _bar: 'baz', _prop: 'foo' }
-var proxy = new Proxy(target, handler)
-for (let key in proxy) {
-  console.log(key);
-  // "prop"
-}
-```
-
-上面代码中，`enumerate`方法取出原对象的所有属性名，将其中第一个字符等于下划线的都过滤掉，然后返回这些符合条件的属性名的一个遍历器对象，供`for...in`循环消费。
-
-下面是另一个例子。
-
-```javascript
-var p = new Proxy({}, {
-  enumerate(target) {
-    console.log("called");
-    return ["a", "b", "c"][Symbol.iterator]();
-  }
-});
-
-for (var x in p) {
-  console.log(x);
-}
-// "called"
-// "a"
-// "b"
-// "c"
-```
-
-如果`enumerate`方法返回的不是一个对象，就会报错。
-
-```javascript
-var p = new Proxy({}, {
-  enumerate(target) {
-    return 1;
-  }
-});
-
-for (var x in p) {} // 报错
-```
 
 ### getOwnPropertyDescriptor()
 
@@ -572,11 +603,11 @@ for (var x in p) {} // 报错
 var handler = {
   getOwnPropertyDescriptor (target, key) {
     if (key[0] === '_') {
-      return
+      return;
     }
-    return Object.getOwnPropertyDescriptor(target, key)
+    return Object.getOwnPropertyDescriptor(target, key);
   }
-}
+};
 var target = { _foo: 'bar', baz: 'tar' };
 var proxy = new Proxy(target, handler);
 Object.getOwnPropertyDescriptor(proxy, 'wat')
@@ -647,7 +678,7 @@ var p = new Proxy({}, {
   }
 });
 
-Object.isExtensible(p); // 报错
+Object.isExtensible(p) // 报错
 ```
 
 ### ownKeys()
@@ -674,21 +705,21 @@ Object.keys(proxy)
 下面的例子是拦截第一个字符为下划线的属性名。
 
 ```javascript
-var target = {
+let target = {
   _bar: 'foo',
   _prop: 'bar',
   prop: 'baz'
 };
 
-var handler = {
+let handler = {
   ownKeys (target) {
     return Reflect.ownKeys(target).filter(key => key[0] !== '_');
   }
 };
 
-var proxy = new Proxy(target, handler);
+let proxy = new Proxy(target, handler);
 for (let key of Object.keys(proxy)) {
-  console.log(key)
+  console.log(target[key]);
 }
 // "baz"
 ```
@@ -697,7 +728,7 @@ for (let key of Object.keys(proxy)) {
 
 `preventExtensions`方法拦截`Object.preventExtensions()`。该方法必须返回一个布尔值。
 
-这个方法有一个限制，只有当`Object.isExtensible(proxy)`为`false`（即不可扩展）时，`proxy.preventExtensions`才能返回true，否则会报错。
+这个方法有一个限制，只有当`Object.isExtensible(proxy)`为`false`（即不可扩展）时，`proxy.preventExtensions`才能返回`true`，否则会报错。
 
 ```javascript
 var p = new Proxy({}, {
@@ -706,7 +737,7 @@ var p = new Proxy({}, {
   }
 });
 
-Object.preventExtensions(p); // 报错
+Object.preventExtensions(p) // 报错
 ```
 
 上面代码中，`proxy.preventExtensions`方法返回`true`，但这时`Object.isExtensible(proxy)`会返回`true`，因此报错。
@@ -738,7 +769,7 @@ var handler = {
   setPrototypeOf (target, proto) {
     throw new Error('Changing the prototype is forbidden');
   }
-}
+};
 var proto = {};
 var target = function () {};
 var proxy = new Proxy(target, handler);
@@ -851,7 +882,7 @@ Reflect.apply(Math.floor, undefined, [1.75]) // 1
 
 ## Reflect对象的方法
 
-`Reflect`对象的方法清单如下，共14个。
+`Reflect`对象的方法清单如下，共13个。
 
 - Reflect.apply(target,thisArg,args)
 - Reflect.construct(target,args)
@@ -861,7 +892,6 @@ Reflect.apply(Math.floor, undefined, [1.75]) // 1
 - Reflect.deleteProperty(target,name)
 - Reflect.has(target,name)
 - Reflect.ownKeys(target)
-- Reflect.enumerate(target)
 - Reflect.isExtensible(target)
 - Reflect.preventExtensions(target)
 - Reflect.getOwnPropertyDescriptor(target, name)
@@ -880,7 +910,7 @@ Reflect.apply(Math.floor, undefined, [1.75]) // 1
 var obj = {
   get foo() { return this.bar(); },
   bar: function() { ... }
-}
+};
 
 // 下面语句会让 this.bar()
 // 变成调用 wrapper.bar()

@@ -1,8 +1,10 @@
 # ECMAScript 6简介
 
-ECMAScript 6（以下简称ES6）是JavaScript语言的下一代标准，已经在2015年6月正式发布了。它的目标，是使得JavaScript语言可以用来编写复杂的大型应用程序，成为企业级开发语言。
+ECMAScript 6.0（以下简称ES6）是JavaScript语言的下一代标准，已经在2015年6月正式发布了。它的目标，是使得JavaScript语言可以用来编写复杂的大型应用程序，成为企业级开发语言。
 
-标准的制定者有计划，以后每年发布一次标准，使用年份作为标准的版本。因为当前版本的ES6是在2015年发布的，所以又称ECMAScript 2015。也就是说，ES6就是ES2015，下一年应该会发布小幅修订的ES2016。
+标准的制定者有计划，以后每年发布一次标准，使用年份作为版本。因为ES6的第一个版本是在2015年发布的，所以又称ECMAScript 2015（简称ES2015）。
+
+2016年6月，小幅修订的《ECMAScript 2016 标准》（简称 ES2016）如期发布。由于变动非常小（只新增了数组实例的`includes`方法和指数运算符），因此 ES2016 与 ES2015 基本上是同一个标准，都被看作是 ES6。根据计划，2017年6月将发布 ES2017。
 
 ## ECMAScript和JavaScript的关系
 
@@ -12,7 +14,7 @@ ECMAScript 6（以下简称ES6）是JavaScript语言的下一代标准，已经�
 
 该标准从一开始就是针对JavaScript语言制定的，但是之所以不叫JavaScript，有两个原因。一是商标，Java是Sun公司的商标，根据授权协议，只有Netscape公司可以合法地使用JavaScript这个名字，且JavaScript本身也已经被Netscape公司注册为商标。二是想体现这门语言的制定者是ECMA，不是Netscape，这样有利于保证这门语言的开放性和中立性。
 
-因此，ECMAScript和JavaScript的关系是，前者是后者的规格，后者是前者的一种实现（另外的ECMAScript方言还有Jscript和ActionScript）。在日常场合，这两个词是可以互换的。
+因此，ECMAScript和JavaScript的关系是，前者是后者的规格，后者是前者的一种实现（另外的ECMAScript方言还有Jscript和ActionScript）。日常场合，这两个词是可以互换的。
 
 ## ECMAScript的历史
 
@@ -47,7 +49,7 @@ Node.js是JavaScript语言的服务器运行环境，对ES6的支持度比浏览
 安装nvm需要打开命令行窗口，运行下面的命令。
 
 ```bash
-$ curl -o https://raw.githubusercontent.com/creationix/nvm/<version number>/install.sh | bash
+$ curl -o- https://raw.githubusercontent.com/creationix/nvm/<version number>/install.sh | bash
 ```
 
 上面命令的`version number`处，需要用版本号替换。本节写作时的版本号是`v0.29.0`。该命令运行后，`nvm`会默认安装在用户主目录的`.nvm`子目录。
@@ -93,7 +95,7 @@ $ node --v8-options | grep harmony
 
 上面命令的输出结果，会因为版本的不同而有所不同。
 
-我写了一个[ES-Checker](https://github.com/ruanyf/es-checker)模块，用来检查各种运行环境对ES6的支持情况。访问[ruanyf.github.io/es-checker](http://ruanyf.github.io/es-checker)，可以看到您的浏览器支持ES6的程度。运行下面的命令，可以查看本机支持ES6的程度。
+我写了一个[ES-Checker](https://github.com/ruanyf/es-checker)模块，用来检查各种运行环境对ES6的支持情况。访问[ruanyf.github.io/es-checker](http://ruanyf.github.io/es-checker)，可以看到您的浏览器支持ES6的程度。运行下面的命令，可以查看你正在使用的Node环境对ES6的支持程度。
 
 ```bash
 $ npm install -g es-checker
@@ -230,7 +232,7 @@ $ npm run build
 
 `babel-cli`工具自带一个`babel-node`命令，提供一个支持ES6的REPL环境。它支持Node的REPL环境的所有功能，而且可以直接运行ES6代码。
 
-它不用单独安装，而是随`babel-cli`一起安装。然后，执行`babel-node`就进入PEPL环境。
+它不用单独安装，而是随`babel-cli`一起安装。然后，执行`babel-node`就进入REPL环境。
 
 ```bash
 $ babel-node
@@ -320,16 +322,16 @@ babel.transformFromAst(ast, code, options);
 下面是一个例子。
 
 ```javascript
-var es5Code = 'let x = n => n + 1';
-var es6Code = require('babel-core')
-  .transform(es5Code, {
+var es6Code = 'let x = n => n + 1';
+var es5Code = require('babel-core')
+  .transform(es6Code, {
     presets: ['es2015']
   })
   .code;
 // '"use strict";\n\nvar x = function x(n) {\n  return n + 1;\n};'
 ```
 
-上面代码中，`transform`方法的第一个参数是一个字符串，表示需要转换的ES5代码，第二个参数是转换的配置对象。
+上面代码中，`transform`方法的第一个参数是一个字符串，表示需要被转换的ES6代码，第二个参数是转换的配置对象。
 
 ### babel-polyfill
 
@@ -395,7 +397,7 @@ $ npm install --save-dev babelify babel-preset-es2015
 
 ```bash
 $  browserify script.js -o bundle.js \
-  -t [ babelify --presets [ es2015 react ] ]
+  -t [ babelify --presets [ es2015 ] ]
 ```
 
 上面代码将ES6脚本`script.js`，转为`bundle.js`，浏览器直接加载后者就可以了。
@@ -424,7 +426,7 @@ ESLint用于静态检查代码的语法和风格，安装命令如下。
 $ npm install --save-dev eslint babel-eslint
 ```
 
-然后，在项目根目录下，新建一个配置文件`.eslint`，在其中加入`parser`字段。
+然后，在项目根目录下，新建一个配置文件`.eslintrc`，在其中加入`parser`字段。
 
 ```javascript
 {
@@ -468,20 +470,20 @@ Google公司的[Traceur](https://github.com/google/traceur-compiler)转码器，
 
 Traceur允许将ES6代码直接插入网页。首先，必须在网页头部加载Traceur库文件。
 
-```javascript
-<!-- 加载Traceur编译器 -->
-<script src="http://google.github.io/traceur-compiler/bin/traceur.js"
-        type="text/javascript"></script>
-<!-- 将Traceur编译器用于网页 -->
-<script src="http://google.github.io/traceur-compiler/src/bootstrap.js"
-        type="text/javascript"></script>
-<!-- 打开实验选项，否则有些特性可能编译不成功 -->
-<script>
-        traceur.options.experimental = true;
+```html
+<script src="https://google.github.io/traceur-compiler/bin/traceur.js"></script>
+<script src="https://google.github.io/traceur-compiler/bin/BrowserSystem.js"></script>
+<script src="https://google.github.io/traceur-compiler/src/bootstrap.js"></script>
+<script type="module">
+  import './Greeter.js';
 </script>
 ```
 
-接下来，就可以把ES6代码放入上面这些代码的下方。
+上面代码中，一共有4个`script`标签。第一个是加载Traceur的库文件，第二个和第三个是将这个库文件用于浏览器环境，第四个则是加载用户脚本，这个脚本里面可以使用ES6代码。
+
+注意，第四个`script`标签的`type`属性的值是`module`，而不是`text/javascript`。这是Traceur编译器识别ES6代码的标志，编译器会自动将所有`type=module`的代码编译为ES5，然后再交给浏览器执行。
+
+除了引用外部ES6脚本，也可以直接在网页中放置ES6代码。
 
 ```javascript
 <script type="module">
@@ -501,14 +503,33 @@ Traceur允许将ES6代码直接插入网页。首先，必须在网页头部加�
 
 正常情况下，上面代码会在控制台打印出9。
 
-注意，`script`标签的`type`属性的值是`module`，而不是`text/javascript`。这是Traceur编译器识别ES6代码的标识，编译器会自动将所有`type=module`的代码编译为ES5，然后再交给浏览器执行。
-
-如果ES6代码是一个外部文件，也可以用`script`标签插入网页。
+如果想对Traceur的行为有精确控制，可以采用下面参数配置的写法。
 
 ```javascript
-<script type="module" src="calc.js" >
+<script>
+  // Create the System object
+  window.System = new traceur.runtime.BrowserTraceurLoader();
+  // Set some experimental options
+  var metadata = {
+    traceurOptions: {
+      experimental: true,
+      properTailCalls: true,
+      symbols: true,
+      arrayComprehension: true,
+      asyncFunctions: true,
+      asyncGenerators: exponentiation,
+      forOn: true,
+      generatorComprehension: true
+    }
+  };
+  // Load your module
+  System.import('./myModule.js', {metadata: metadata}).catch(function(ex) {
+    console.error('Import failed', ex.stack || ex);
+  });
 </script>
 ```
+
+上面代码中，首先生成Traceur的全局对象`window.System`，然后`System.import`方法可以用来加载ES6模块。加载的时候，需要传入一个配置对象`metadata`，该对象的`traceurOptions`属性可以配置支持ES6功能。如果设为`experimental: true`，就表示除了ES6以外，还支持一些实验性的新功能。
 
 ### 在线转换
 
@@ -517,13 +538,9 @@ Traceur也提供一个[在线编译器](http://google.github.io/traceur-compiler
 上面的例子转为ES5代码运行，就是下面这个样子。
 
 ```javascript
-<script src="http://google.github.io/traceur-compiler/bin/traceur.js"
-        type="text/javascript"></script>
-<script src="http://google.github.io/traceur-compiler/src/bootstrap.js"
-        type="text/javascript"></script>
-<script>
-        traceur.options.experimental = true;
-</script>
+<script src="https://google.github.io/traceur-compiler/bin/traceur.js"></script>
+<script src="https://google.github.io/traceur-compiler/bin/BrowserSystem.js"></script>
+<script src="https://google.github.io/traceur-compiler/src/bootstrap.js"></script>
 <script>
 $traceurRuntime.ModuleStore.getAnonymousModule(function() {
   "use strict";
@@ -545,15 +562,15 @@ $traceurRuntime.ModuleStore.getAnonymousModule(function() {
 
 ### 命令行转换
 
-作为命令行工具使用时，Traceur是一个Node.js的模块，首先需要用npm安装。
+作为命令行工具使用时，Traceur是一个Node的模块，首先需要用Npm安装。
 
 ```bash
 $ npm install -g traceur
 ```
 
-安装成功后，就可以在命令行下使用traceur了。
+安装成功后，就可以在命令行下使用Traceur了。
 
-traceur直接运行es6脚本文件，会在标准输出显示运行结果，以前面的`calc.js`为例。
+Traceur直接运行es6脚本文件，会在标准输出显示运行结果，以前面的`calc.js`为例。
 
 ```bash
 $ traceur calc.js
@@ -561,7 +578,7 @@ Calc constructor
 9
 ```
 
-如果要将ES6脚本转为ES5保存，要采用下面的写法
+如果要将ES6脚本转为ES5保存，要采用下面的写法。
 
 ```bash
 $ traceur --script calc.es6.js --out calc.es5.js
@@ -575,7 +592,7 @@ $ traceur --script calc.es6.js --out calc.es5.js
 $ traceur --script calc.es6.js --out calc.es5.js --experimental
 ```
 
-命令行下转换的文件，就可以放到浏览器中运行。
+命令行下转换生成的文件，就可以直接放到浏览器中运行。
 
 ### Node.js环境的用法
 
@@ -624,21 +641,33 @@ fs.writeFileSync('out.js.map', result.sourceMap);
 
 **Stage 0**：
 
-- es7.comprehensions：数组推导
-- es7.classProperties：类的属性
-- es7.functionBind：函数的绑定运算符
+- Function Bind Syntax：函数的绑定运算符
+- String.prototype.at：字符串的静态方法at
 
 **Stage 1**：
 
-- es7.decorators：修饰器
-- es7.exportExtensions：export的扩展写法
-- es7.trailingFunctionCommas：函数参数的尾逗号
+- Class and Property Decorators：Class的修饰器
+- Class Property Declarations：Class的属性声明
+- Additional export-from Statements：export的写法改进
+- String.prototype.{trimLeft,trimRight}：字符串删除头尾空格的方法
 
 **Stage 2**：
 
-- es7.exponentiationOperator：指数运算符
-- es7.asyncFunctions：async函数
-- es7.objectRestSpread：对象的Rest参数和扩展运算符
+- Rest/Spread Properties：对象的Rest参数和扩展运算符
+
+**Stage 3**
+
+- SIMD API：“单指令，多数据”命令集
+- Async Functions：async函数
+- Object.values/Object.entries：Object的静态方法values()和entries()
+- String padding：字符串长度补全
+- Trailing commas in function parameter lists and calls：函数参数的尾逗号
+- Object.getOwnPropertyDescriptors：Object的静态方法getOwnPropertyDescriptors
+
+**Stage 4**：
+
+- Array.prototype.includes：数组实例的includes方法
+- Exponentiation Operator：指数运算符
 
 ECMAScript当前的所有提案，可以在TC39的官方网站[Github.com/tc39/ecma262](https://github.com/tc39/ecma262)查看。
 

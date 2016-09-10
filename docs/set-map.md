@@ -11,9 +11,11 @@ Set本身是一个构造函数，用来生成Set数据结构。
 ```javascript
 var s = new Set();
 
-[2,3,5,4,5,2,2].map(x => s.add(x))
+[2, 3, 5, 4, 5, 2, 2].map(x => s.add(x));
 
-for (let i of s) {console.log(i)}
+for (let i of s) {
+  console.log(i);
+}
 // 2 3 5 4
 ```
 
@@ -22,23 +24,35 @@ for (let i of s) {console.log(i)}
 Set函数可以接受一个数组（或类似数组的对象）作为参数，用来初始化。
 
 ```javascript
-var set = new Set([1, 2, 3, 4, 4])
+// 例一
+var set = new Set([1, 2, 3, 4, 4]);
 [...set]
 // [1, 2, 3, 4]
 
+// 例二
 var items = new Set([1, 2, 3, 4, 5, 5, 5, 5]);
 items.size // 5
 
+// 例三
 function divs () {
-  return [...document.querySelectorAll('div')]
+  return [...document.querySelectorAll('div')];
 }
 
-var set = new Set(divs())
+var set = new Set(divs());
 set.size // 56
 
 // 类似于
-divs().forEach(div => set.add(div))
+divs().forEach(div => set.add(div));
 set.size // 56
+```
+
+上面代码中，例一和例二都是`Set`函数接受数组作为参数，例三是接受类似数组的对象作为参数。
+
+上面代码中，也展示了一种去除数组重复成员的方法。
+
+```javascript
+// 去除数组的重复成员
+[...new Set(array)]
 ```
 
 向Set加入值的时候，不会发生类型转换，所以`5`和`"5"`是两个不同的值。Set内部判断两个值是否不同，使用的算法叫做“Same-value equality”，它类似于精确相等运算符（`===`），主要的区别是`NaN`等于自身，而精确相等运算符认为`NaN`不等于自身。
@@ -59,10 +73,10 @@ set // Set {NaN}
 ```javascript
 let set = new Set();
 
-set.add({})
+set.add({});
 set.size // 1
 
-set.add({})
+set.add({});
 set.size // 2
 ```
 
@@ -72,15 +86,15 @@ set.size // 2
 
 Set结构的实例有以下属性。
 
-- Set.prototype.constructor：构造函数，默认就是Set函数。
-- Set.prototype.size：返回Set实例的成员总数。
+- `Set.prototype.constructor`：构造函数，默认就是`Set`函数。
+- `Set.prototype.size`：返回`Set`实例的成员总数。
 
 Set实例的方法分为两大类：操作方法（用于操作数据）和遍历方法（用于遍历成员）。下面先介绍四个操作方法。
 
-- add(value)：添加某个值，返回Set结构本身。
-- delete(value)：删除某个值，返回一个布尔值，表示删除是否成功。
-- has(value)：返回一个布尔值，表示该值是否为Set的成员。
-- clear()：清除所有成员，没有返回值。
+- `add(value)`：添加某个值，返回Set结构本身。
+- `delete(value)`：删除某个值，返回一个布尔值，表示删除是否成功。
+- `has(value)`：返回一个布尔值，表示该值是否为`Set`的成员。
+- `clear()`：清除所有成员，没有返回值。
 
 上面这些属性和方法的实例如下。
 
@@ -98,13 +112,13 @@ s.delete(2);
 s.has(2) // false
 ```
 
-下面是一个对比，看看在判断是否包括一个键上面，Object结构和Set结构的写法不同。
+下面是一个对比，看看在判断是否包括一个键上面，`Object`结构和`Set`结构的写法不同。
 
 ```javascript
 // 对象的写法
 var properties = {
-  "width": 1,
-  "height": 1
+  'width': 1,
+  'height': 1
 };
 
 if (properties[someName]) {
@@ -114,60 +128,64 @@ if (properties[someName]) {
 // Set的写法
 var properties = new Set();
 
-properties.add("width");
-properties.add("height");
+properties.add('width');
+properties.add('height');
 
 if (properties.has(someName)) {
   // do something
 }
 ```
 
-Array.from方法可以将Set结构转为数组。
+`Array.from`方法可以将Set结构转为数组。
 
 ```javascript
 var items = new Set([1, 2, 3, 4, 5]);
 var array = Array.from(items);
 ```
 
-这就提供了一种去除数组的重复元素的方法。
+这就提供了去除数组重复成员的另一种方法。
 
 ```javascript
 function dedupe(array) {
   return Array.from(new Set(array));
 }
 
-dedupe([1,1,2,3]) // [1, 2, 3]
+dedupe([1, 1, 2, 3]) // [1, 2, 3]
 ```
 
 ### 遍历操作
 
 Set结构的实例有四个遍历方法，可以用于遍历成员。
 
-- keys()：返回一个键名的遍历器
-- values()：返回一个键值的遍历器
-- entries()：返回一个键值对的遍历器
-- forEach()：使用回调函数遍历每个成员
+- `keys()`：返回键名的遍历器
+- `values()`：返回键值的遍历器
+- `entries()`：返回键值对的遍历器
+- `forEach()`：使用回调函数遍历每个成员
+
+需要特别指出的是，`Set`的遍历顺序就是插入顺序。这个特性有时非常有用，比如使用Set保存一个回调函数列表，调用时就能保证按照添加顺序调用。
+
+**（1）`keys()`，`values()`，`entries()`**
 
 `key`方法、`value`方法、`entries`方法返回的都是遍历器对象（详见《Iterator对象》一章）。由于Set结构没有键名，只有键值（或者说键名和键值是同一个值），所以`key`方法和`value`方法的行为完全一致。
 
 ```javascript
 let set = new Set(['red', 'green', 'blue']);
 
-for ( let item of set.keys() ){
+for (let item of set.keys()) {
   console.log(item);
 }
 // red
 // green
 // blue
 
-for ( let item of set.values() ){
+for (let item of set.values()) {
   console.log(item);
 }
 // red
 // green
 // blue
 
-for ( let item of set.entries() ){
+for (let item of set.entries()) {
   console.log(item);
 }
 // ["red", "red"]
@@ -197,7 +215,23 @@ for (let x of set) {
 // blue
 ```
 
-由于扩展运算符（...）内部使用`for...of`循环，所以也可以用于Set结构。
+**（2）`forEach()`**
+
+Set结构的实例的`forEach`方法，用于对每个成员执行某种操作，没有返回值。
+
+```javascript
+let set = new Set([1, 2, 3]);
+set.forEach((value, key) => console.log(value * 2) )
+// 2
+// 4
+// 6
+```
+
+上面代码说明，`forEach`方法的参数就是一个处理函数。该函数的参数依次为键值、键名、集合本身（上例省略了该参数）。另外，`forEach`方法还可以有第二个参数，表示绑定的this对象。
+
+**（3）遍历的应用**
+
+扩展运算符（`...`）内部使用`for...of`循环，所以也可以用于Set结构。
 
 ```javascript
 let set = new Set(['red', 'green', 'blue']);
@@ -205,7 +239,7 @@ let arr = [...set];
 // ['red', 'green', 'blue']
 ```
 
-这就提供了另一种便捷的去除数组重复元素的方法。
+扩展运算符和Set结构相结合，就可以去除数组的重复成员。
 
 ```javascript
 let arr = [3, 5, 2, 2, 5, 5];
@@ -225,7 +259,7 @@ set = new Set([...set].filter(x => (x % 2) == 0));
 // 返回Set结构：{2, 4}
 ```
 
-因此使用Set，可以很容易地实现并集（Union）、交集（Intersect）和差集（Difference）。
+因此使用Set可以很容易地实现并集（Union）、交集（Intersect）和差集（Difference）。
 
 ```javascript
 let a = new Set([1, 2, 3]);
@@ -233,30 +267,18 @@ let b = new Set([4, 3, 2]);
 
 // 并集
 let union = new Set([...a, ...b]);
-// [1, 2, 3, 4]
+// Set {1, 2, 3, 4}
 
 // 交集
 let intersect = new Set([...a].filter(x => b.has(x)));
-// [2, 3]
+// set {2, 3}
 
 // 差集
 let difference = new Set([...a].filter(x => !b.has(x)));
-// [1]
+// Set {1}
 ```
 
-Set结构的实例的forEach方法，用于对每个成员执行某种操作，没有返回值。
-
-```javascript
-let set = new Set([1, 2, 3]);
-set.forEach((value, key) => console.log(value * 2) )
-// 2
-// 4
-// 6
-```
-
-上面代码说明，`forEach`方法的参数就是一个处理函数。该函数的参数依次为键值、键名、集合本身（上例省略了该参数）。另外，`forEach`方法还可以有第二个参数，表示绑定的this对象。
-
-如果想在遍历操作中，同步改变原来的Set结构，目前没有直接的方法，但有两种变通方法。一种是利用原Set结构映射出一个新的结构，然后赋值给原来的Set结构；另一种是利用Array.from方法。
+如果想在遍历操作中，同步改变原来的Set结构，目前没有直接的方法，但有两种变通方法。一种是利用原Set结构映射出一个新的结构，然后赋值给原来的Set结构；另一种是利用`Array.from`方法。
 
 ```javascript
 // 方法一
@@ -288,7 +310,7 @@ ws.add(Symbol())
 // TypeError: invalid value used in weak set
 ```
 
-上面代码试图向WeakSet添加一个数值和`Symbol`值，结果报错。
+上面代码试图向WeakSet添加一个数值和`Symbol`值，结果报错，因为WeakSet只能放置对象。
 
 WeakSet是一个构造函数，可以使用`new`命令，创建WeakSet数据结构。
 
@@ -303,7 +325,17 @@ var a = [[1,2], [3,4]];
 var ws = new WeakSet(a);
 ```
 
-上面代码中，a是一个数组，它有两个成员，也都是数组。将a作为WeakSet构造函数的参数，a的成员会自动成为WeakSet的成员。
+上面代码中，`a`是一个数组，它有两个成员，也都是数组。将`a`作为WeakSet构造函数的参数，`a`的成员会自动成为WeakSet的成员。
+
+注意，是`a`数组的成员成为WeakSet的成员，而不是`a`数组本身。这意味着，数组的成员只能是对象。
+
+```javascript
+var b = [3, 4];
+var ws = new WeakSet(b);
+// Uncaught TypeError: Invalid value used in weak set(…)
+```
+
+上面代码中，数组`b`的成员不是对象，加入WeaKSet就会报错。
 
 WeakSet结构有以下三个方法。
 
@@ -352,7 +384,7 @@ class Foo {
   }
   method () {
     if (!foos.has(this)) {
-      throw new TypeError('Foo.prototype.method 只能在Foo的实例上调用！')
+      throw new TypeError('Foo.prototype.method 只能在Foo的实例上调用！');
     }
   }
 }
@@ -364,25 +396,25 @@ class Foo {
 
 ### Map结构的目的和基本用法
 
-JavaScript的对象（Object），本质上是键值对的集合（Hash结构），但是只能用字符串当作键。这给它的使用带来了很大的限制。
+JavaScript的对象（Object），本质上是键值对的集合（Hash结构），但是传统上只能用字符串当作键。这给它的使用带来了很大的限制。
 
 ```javascript
 var data = {};
-var element = document.getElementById("myDiv");
+var element = document.getElementById('myDiv');
 
-data[element] = metadata;
-data["[Object HTMLDivElement]"] // metadata
+data[element] = 'metadata';
+data['[object HTMLDivElement]'] // "metadata"
 ```
 
-上面代码原意是将一个DOM节点作为对象data的键，但是由于对象只接受字符串作为键名，所以element被自动转为字符串`[Object HTMLDivElement]`。
+上面代码原意是将一个DOM节点作为对象`data`的键，但是由于对象只接受字符串作为键名，所以`element`被自动转为字符串`[object HTMLDivElement]`。
 
 为了解决这个问题，ES6提供了Map数据结构。它类似于对象，也是键值对的集合，但是“键”的范围不限于字符串，各种类型的值（包括对象）都可以当作键。也就是说，Object结构提供了“字符串—值”的对应，Map结构提供了“值—值”的对应，是一种更完善的Hash结构实现。如果你需要“键值对”的数据结构，Map比Object更合适。
 
 ```javascript
 var m = new Map();
-var o = {p: "Hello World"};
+var o = {p: 'Hello World'};
 
-m.set(o, "content")
+m.set(o, 'content')
 m.get(o) // "content"
 
 m.has(o) // true
@@ -390,18 +422,21 @@ m.delete(o) // true
 m.has(o) // false
 ```
 
-上面代码使用set方法，将对象o当作m的一个键，然后又使用get方法读取这个键，接着使用delete方法删除了这个键。
+上面代码使用`set`方法，将对象`o`当作`m`的一个键，然后又使用`get`方法读取这个键，接着使用`delete`方法删除了这个键。
 
 作为构造函数，Map也可以接受一个数组作为参数。该数组的成员是一个个表示键值对的数组。
 
 ```javascript
-var map = new Map([["name", "张三"], ["title", "Author"]]);
+var map = new Map([
+  ['name', '张三'],
+  ['title', 'Author']
+]);
 
 map.size // 2
-map.has("name") // true
-map.get("name") // "张三"
-map.has("title") // true
-map.get("title") // "Author"
+map.has('name') // true
+map.get('name') // "张三"
+map.has('title') // true
+map.get('title') // "Author"
 ```
 
 上面代码在新建Map实例时，就指定了两个键`name`和`title`。
@@ -410,11 +445,23 @@ Map构造函数接受数组作为参数，实际上执行的是下面的算法�
 
 ```javascript
 var items = [
-  ["name", "张三"],
-  ["title", "Author"]
+  ['name', '张三'],
+  ['title', 'Author']
 ];
 var map = new Map();
 items.forEach(([key, value]) => map.set(key, value));
+```
+
+下面的例子中，字符串`true`和布尔值`true`是两个不同的键。
+
+```javascript
+var m = new Map([
+  [true, 'foo'],
+  ['true', 'bar']
+]);
+
+m.get(true) // 'foo'
+m.get('true') // 'bar'
 ```
 
 如果对同一个键多次赋值，后面的值将覆盖前面的值。
@@ -469,7 +516,7 @@ map.get(k2) // 222
 
 由上可知，Map的键实际上是跟内存地址绑定的，只要内存地址不一样，就视为两个键。这就解决了同名属性碰撞（clash）的问题，我们扩展别人的库的时候，如果使用对象作为键名，就不用担心自己的属性与原作者的属性同名。
 
-如果Map的键是一个简单类型的值（数字、字符串、布尔值），则只要两个值严格相等，Map将其视为一个键，包括0和-0。另外，虽然NaN不严格相等于自身，但Map将其视为同一个键。
+如果Map的键是一个简单类型的值（数字、字符串、布尔值），则只要两个值严格相等，Map将其视为一个键，包括`0`和`-0`。另外，虽然`NaN`不严格相等于自身，但Map将其视为同一个键。
 
 ```javascript
 let map = new Map();
@@ -578,10 +625,12 @@ map.size // 0
 
 Map原生提供三个遍历器生成函数和一个遍历方法。
 
-- keys()：返回键名的遍历器。
-- values()：返回键值的遍历器。
-- entries()：返回所有成员的遍历器。
-- forEach()：遍历Map的所有成员。
+- `keys()`：返回键名的遍历器。
+- `values()`：返回键值的遍历器。
+- `entries()`：返回所有成员的遍历器。
+- `forEach()`：遍历Map的所有成员。
+
+需要特别注意的是，Map的遍历顺序就是插入顺序。
 
 下面是使用实例。
 
@@ -627,7 +676,7 @@ map[Symbol.iterator] === map.entries
 // true
 ```
 
-Map结构转为数组结构，比较快速的方法是结合使用扩展运算符（...）。
+Map结构转为数组结构，比较快速的方法是结合使用扩展运算符（`...`）。
 
 ```javascript
 let map = new Map([
@@ -649,7 +698,7 @@ let map = new Map([
 // [[1,'one'], [2, 'two'], [3, 'three']]
 ```
 
-结合数组的map方法、filter方法，可以实现Map的遍历和过滤（Map本身没有map和filter方法）。
+结合数组的`map`方法、`filter`方法，可以实现Map的遍历和过滤（Map本身没有`map`和`filter`方法）。
 
 ```javascript
 let map0 = new Map()
@@ -668,15 +717,15 @@ let map2 = new Map(
 // 产生Map结构 {2 => '_a', 4 => '_b', 6 => '_c'}
 ```
 
-此外，Map还有一个forEach方法，与数组的forEach方法类似，也可以实现遍历。
+此外，Map还有一个`forEach`方法，与数组的`forEach`方法类似，也可以实现遍历。
 
 ```javascript
-map.forEach(function(value, key, map)) {
+map.forEach(function(value, key, map) {
   console.log("Key: %s, Value: %s", key, value);
-};
+});
 ```
 
-forEach方法还可以接受第二个参数，用来绑定this。
+`forEach`方法还可以接受第二个参数，用来绑定`this`。
 
 ```javascript
 var reporter = {

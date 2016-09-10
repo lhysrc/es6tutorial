@@ -154,7 +154,7 @@ Symbol类型还可以用于定义一组常量，保证这组常量的值都是�
 log.levels = {
   DEBUG: Symbol('debug'),
   INFO: Symbol('info'),
-  WARN: Symbol('warn'),
+  WARN: Symbol('warn')
 };
 log(log.levels.DEBUG, 'debug message');
 log(log.levels.INFO, 'info message');
@@ -246,7 +246,7 @@ Symbol作为属性名，该属性不会出现在`for...in`、`for...of`循环中
 ```javascript
 var obj = {};
 var a = Symbol('a');
-var b = Symbol.for('b');
+var b = Symbol('b');
 
 obj[a] = 'Hello';
 obj[b] = 'World';
@@ -377,13 +377,71 @@ iframe.contentWindow.Symbol.for('foo') === Symbol.for('foo')
 
 上面代码中，iframe窗口生成的Symbol值，可以在主页面得到。
 
+## 实例：模块的 Singleton 模式
+
+Singleton模式指的是调用一个类，任何时候返回的都是同一个实例。
+
+对于 Node 来说，模块文件可以看成是一个类。怎么保证每次执行这个模块文件，返回的都是同一个实例呢？
+
+很容易想到，可以把实例放到顶层对象`global`。
+
+```javascript
+// mod.js
+function A() {
+  this.foo = 'hello';
+}
+
+if (!global._foo) {
+  global._foo = new A();
+}
+
+module.exports = global._foo;
+```
+
+然后，加载上面的`mod.js`。
+
+```javascript
+var a = require('./mod.js');
+console.log(a.foo);
+```
+
+上面代码中，变量`a`任何时候加载的都是`A`的同一个实例。
+
+但是，这里有一个问题，全局变量`global._foo`是可写的，任何文件都可以修改。
+
+```javascript
+var a = require('./mod.js');
+global._foo = 123;
+```
+
+上面的代码，会使得别的脚本加载`mod.js`都失真。
+
+为了防止这种情况出现，我们就可以使用Symbol。
+
+```javascript
+// mod.js
+const FOO_KEY = Symbol.for('foo');
+
+function A() {
+  this.foo = 'hello';
+}
+
+if (!global[FOO_KEY]) {
+  global[FOO_KEY] = new A();
+}
+
+module.exports = global[FOO_KEY];
+```
+
+上面代码中，可以保证`global[FOO_KEY]`不会被其他脚本改写。
+
 ## 内置的Symbol值
 
 除了定义自己使用的Symbol值以外，ES6还提供了11个内置的Symbol值，指向语言内部使用的方法。
 
 ### Symbol.hasInstance
 
-对象的`Symbol.hasInstance`属性，指向一个内部方法。该对象使用`instanceof`运算符时，会调用这个方法，判断该对象是否为某个构造函数的实例。比如，`foo instanceof Foo`在语言内部，实际调用的是`Foo[Symbol.hasInstance](foo)`。
+对象的`Symbol.hasInstance`属性，指向一个内部方法。当其他对象使用`instanceof`运算符，判断是否为该对象的实例时，会调用这个方法。比如，`foo instanceof Foo`在语言内部，实际调用的是`Foo[Symbol.hasInstance](foo)`。
 
 ```javascript
 class MyClass {
@@ -391,8 +449,24 @@ class MyClass {
     return foo instanceof Array;
   }
 }
-var o = new MyClass();
-o instanceof Array // false
+
+[1, 2, 3] instanceof new MyClass() // true
+```
+
+上面代码中，`MyClass`是一个类，`new MyClass()`会返回一个实例。该实例的`Symbol.hasInstance`方法，会在进行`instanceof`运算时自动调用，判断左侧的运算子是否为`Array`的实例。
+
+下面是另一个例子。
+
+```javascript
+class Even {
+  static [Symbol.hasInstance](obj) {
+    return Number(obj) % 2 === 0;
+  }
+}
+
+1 instanceof Even // false
+2 instanceof Even // true
+12345 instanceof Even // false
 ```
 
 ### Symbol.isConcatSpreadable
@@ -402,13 +476,14 @@ o instanceof Array // false
 ```javascript
 let arr1 = ['c', 'd'];
 ['a', 'b'].concat(arr1, 'e') // ['a', 'b', 'c', 'd', 'e']
+arr1[Symbol.isConcatSpreadable] // undefined
 
 let arr2 = ['c', 'd'];
 arr2[Symbol.isConcatSpreadable] = false;
 ['a', 'b'].concat(arr2, 'e') // ['a', 'b', ['c','d'], 'e']
 ```
 
-上面代码说明，数组的`Symbol.isConcatSpreadable`属性默认为`true`，表示可以展开。
+上面代码说明，数组的默认行为是可以展开。`Symbol.isConcatSpreadable`属性等于`true`或`undefined`，都有这个效果。
 
 类似数组的对象也可以展开，但它的`Symbol.isConcatSpreadable`属性默认为`false`，必须手动打开。
 
@@ -420,17 +495,19 @@ obj[Symbol.isConcatSpreadable] = true;
 ['a', 'b'].concat(obj, 'e') // ['a', 'b', 'c', 'd', 'e']
 ```
 
-对于一个类来说，`Symbol.isConcatSpreadable`属性必须写成一个返回布尔值的方法。
+对于一个类来说，`Symbol.isConcatSpreadable`属性必须写成实例的属性。
 
 ```javascript
 class A1 extends Array {
-  [Symbol.isConcatSpreadable]() {
-    return true;
+  constructor(args) {
+    super(args);
+    this[Symbol.isConcatSpreadable] = true;
   }
 }
 class A2 extends Array {
-  [Symbol.isConcatSpreadable]() {
-    return false;
+  constructor(args) {
+    super(args);
+    this[Symbol.isConcatSpreadable] = false;
   }
 }
 let a1 = new A1();
@@ -443,7 +520,7 @@ a2[1] = 6;
 // [1, 2, 3, 4, [5, 6]]
 ```
 
-上面代码中，类`A1`是可扩展的，类`A2`是不可扩展的，所以使用`concat`时有不一样的结果。
+上面代码中，类`A1`是可展开的，类`A2`是不可展开的，所以使用`concat`时有不一样的结果。
 
 ### Symbol.species
 
@@ -517,7 +594,20 @@ separator[Symbol.split](this, limit)
 
 ### Symbol.iterator
 
-对象的Symbol.iterator属性，指向该对象的默认遍历器方法，即该对象进行for...of循环时，会调用这个方法，返回该对象的默认遍历器，详细介绍参见《Iterator和for...of循环》一章。
+对象的`Symbol.iterator`属性，指向该对象的默认遍历器方法。
+
+```javascript
+var myIterable = {};
+myIterable[Symbol.iterator] = function* () {
+  yield 1;
+  yield 2;
+  yield 3;
+};
+
+[...myIterable] // [1, 2, 3]
+```
+
+对象进行`for...of`循环时，会调用`Symbol.iterator`方法，返回该对象的默认遍历器，详细介绍参见《Iterator和for...of循环》一章。
 
 ```javascript
 class Collection {
@@ -569,7 +659,7 @@ let obj = {
 
 2 * obj // 246
 3 + obj // '3default'
-obj === 'default' // true
+obj == 'default' // true
 String(obj) // 'str'
 ```
 

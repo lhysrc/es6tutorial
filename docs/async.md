@@ -50,9 +50,9 @@ fs.readFile(fileA, function (err, data) {
 });
 ```
 
-不难想象，如果依次读取多个文件，就会出现多重嵌套。代码不是纵向发展，而是横向发展，很快就会乱成一团，无法管理。这种情况就称为“回调函数噩梦”（callback hell）。
+不难想象，如果依次读取多个文件，就会出现多重嵌套。代码不是纵向发展，而是横向发展，很快就会乱成一团，无法管理。这种情况就称为"回调函数噩梦"（callback hell）。
 
-Promise就是为了解决这个问题而提出的。它不是新的语法功能，而是一种新的写法，允许将回调函数的横向加载，改成纵向加载。采用Promise，连续读取多个文件，写法如下。
+Promise就是为了解决这个问题而提出的。它不是新的语法功能，而是一种新的写法，允许将回调函数的嵌套，改成链式调用。采用Promise，连续读取多个文件，写法如下。
 
 ```javascript
 var readFile = require('fs-readfile-promise');
@@ -98,7 +98,7 @@ Promise 的最大问题是代码冗余，原来的任务被Promise 包装了一�
 举例来说，读取文件的协程写法如下。
 
 ```javascript
-function *asnycJob() {
+function *asyncJob() {
   // ...其他代码
   var f = yield readFile(fileA);
   // ...其他代码
@@ -230,7 +230,7 @@ f(x + 5)
 f(6)
 ```
 
-另一种意见是"传名调用"（call by name），即直接将表达式`x + 5`传入函数体，只在用到它的时候求值。Hskell语言采用这种策略。
+另一种意见是"传名调用"（call by name），即直接将表达式`x + 5`传入函数体，只在用到它的时候求值。Haskell语言采用这种策略。
 
 ```javascript
 f(x + 5)
@@ -273,6 +273,7 @@ function f(thunk){
 ```
 
 上面代码中，函数f的参数`x + 5`被一个函数替换了。凡是用到原参数的地方，对`Thunk`函数求值即可。
+
 这就是Thunk函数的定义，它是"传名调用"的一种实现策略，用来替换某个表达式。
 
 ### JavaScript语言的Thunk函数
@@ -299,12 +300,22 @@ var Thunk = function (fileName){
 任何函数，只要参数有回调函数，就能写成Thunk函数的形式。下面是一个简单的Thunk函数转换器。
 
 ```javascript
+// ES5版本
 var Thunk = function(fn){
   return function (){
     var args = Array.prototype.slice.call(arguments);
     return function (callback){
       args.push(callback);
       return fn.apply(this, args);
+    }
+  };
+};
+
+// ES6版本
+var Thunk = function(fn) {
+  return function (...args) {
+    return function (callback) {
+      return fn.call(this, ...args, callback);
     }
   };
 };
@@ -315,6 +326,18 @@ var Thunk = function(fn){
 ```javascript
 var readFileThunk = Thunk(fs.readFile);
 readFileThunk(fileA)(callback);
+```
+
+下面是另一个完整的例子。
+
+```javascript
+function f(a, cb) {
+  cb(a);
+}
+let ft = Thunk(f);
+
+let log = console.log.bind(console);
+ft(1)(log) // 1
 ```
 
 ### Thunkify模块
@@ -391,7 +414,25 @@ ft(1, 2)(print);
 
 你可能会问， Thunk函数有什么用？回答是以前确实没什么用，但是ES6有了Generator函数，Thunk函数现在可以用于Generator函数的自动流程管理。
 
-以读取文件为例。下面的Generator函数封装了两个异步操作。
+Generator函数可以自动执行。
+
+```javascript
+function* gen() {
+  // ...
+}
+
+var g = gen();
+var res = g.next();
+
+while(!res.done){
+  console.log(res.value);
+  res = g.next();
+}
+```
+
+上面代码中，Generator函数`gen`会自动执行完所有步骤。
+
+但是，这不适合异步操作。如果必须保证前一步执行完，才能执行后一步，上面的自动执行就不可行。这时，Thunk函数就能派上用处。以读取文件为例。下面的Generator函数封装了两个异步操作。
 
 ```javascript
 var fs = require('fs');
@@ -445,25 +486,29 @@ function run(fn) {
   next();
 }
 
-run(gen);
+function* g() {
+  // ...
+}
+
+run(g);
 ```
 
-上面代码的run函数，就是一个Generator函数的自动执行器。内部的next函数就是Thunk的回调函数。next函数先将指针移到Generator函数的下一步（gen.next方法），然后判断Generator函数是否结束（result.done 属性），如果没结束，就将next函数再传入Thunk函数（result.value属性），否则就直接退出。
+上面代码的`run`函数，就是一个Generator函数的自动执行器。内部的`next`函数就是Thunk的回调函数。`next`函数先将指针移到Generator函数的下一步（`gen.next`方法），然后判断Generator函数是否结束（`result.done`属性），如果没结束，就将`next`函数再传入Thunk函数（`result.value`属性），否则就直接退出。
 
-有了这个执行器，执行Generator函数方便多了。不管有多少个异步操作，直接传入`run`函数即可。当然，前提是每一个异步操作，都要是Thunk函数，也就是说，跟在`yield`命令后面的必须是Thunk函数。
+有了这个执行器，执行Generator函数方便多了。不管内部有多少个异步操作，直接把Generator函数传入`run`函数即可。当然，前提是每一个异步操作，都要是Thunk函数，也就是说，跟在`yield`命令后面的必须是Thunk函数。
 
 ```javascript
-var gen = function* (){
+var g = function* (){
   var f1 = yield readFile('fileA');
   var f2 = yield readFile('fileB');
   // ...
   var fn = yield readFile('fileN');
 };
 
-run(gen);
+run(g);
 ```
 
-上面代码中，函数`gen`封装了`n`个异步的读取文件操作，只要执行`run`函数，这些操作就会自动完成。这样一来，异步操作不仅可以写得像同步操作，而且一行代码就可以执行。
+上面代码中，函数`g`封装了`n`个异步的读取文件操作，只要执行`run`函数，这些操作就会自动完成。这样一来，异步操作不仅可以写得像同步操作，而且一行代码就可以执行。
 
 Thunk函数并不是Generator函数自动执行的唯一方案。因为自动执行的关键是，必须有一种机制，自动控制Generator函数的流程，接收和交还程序的执行权。回调函数可以做到这一点，Promise 对象也可以做到这一点。
 
@@ -498,7 +543,7 @@ co函数返回一个Promise对象，因此可以用then方法添加回调函数�
 ```javascript
 co(gen).then(function (){
   console.log('Generator 函数执行完成');
-})
+});
 ```
 
 上面代码中，等到Generator函数执行结束，就会输出一行提示。
@@ -529,7 +574,7 @@ var fs = require('fs');
 var readFile = function (fileName){
   return new Promise(function (resolve, reject){
     fs.readFile(fileName, function(error, data){
-      if (error) reject(error);
+      if (error) return reject(error);
       resolve(data);
     });
   });
@@ -552,7 +597,7 @@ g.next().value.then(function(data){
   g.next(data).value.then(function(data){
     g.next(data);
   });
-})
+});
 ```
 
 手动执行其实就是用then方法，层层添加回调函数。理解了这一点，就可以写出一个自动执行器。
@@ -691,7 +736,7 @@ function* somethingAsync(x) {
 }
 ```
 
-上面的代码允许并发三个somethingAsync异步操作，等到它们全部完成，才会进行下一步。
+上面的代码允许并发三个`somethingAsync`异步操作，等到它们全部完成，才会进行下一步。
 
 ## async函数
 
@@ -704,9 +749,9 @@ ES7提供了`async`函数，使得异步操作变得更加方便。`async`函数
 ```javascript
 var fs = require('fs');
 
-var readFile = function (fileName){
-  return new Promise(function (resolve, reject){
-    fs.readFile(fileName, function(error, data){
+var readFile = function (fileName) {
+  return new Promise(function (resolve, reject) {
+    fs.readFile(fileName, function(error, data) {
       if (error) reject(error);
       resolve(data);
     });
@@ -721,7 +766,7 @@ var gen = function* (){
 };
 ```
 
-写成 async 函数，就是下面这样。
+写成`async`函数，就是下面这样。
 
 ```javascript
 var asyncReadFile = async function (){
@@ -734,7 +779,7 @@ var asyncReadFile = async function (){
 
 一比较就会发现，`async`函数就是将Generator函数的星号（`*`）替换成`async`，将`yield`替换成`await`，仅此而已。
 
-`async`函数对 Generator 函数的改进，体现在以下三点。
+`async`函数对 Generator 函数的改进，体现在以下四点。
 
 （1）内置执行器。Generator函数的执行必须靠执行器，所以才有了`co`模块，而`async`函数自带执行器。也就是说，`async`函数的执行，与普通函数一模一样，只要一行。
 
@@ -750,7 +795,172 @@ var result = asyncReadFile();
 
 （4）返回值是Promise。`async`函数的返回值是Promise对象，这比Generator函数的返回值是Iterator对象方便多了。你可以用`then`方法指定下一步的操作。
 
-进一步说，async函数完全可以看作多个异步操作，包装成的一个Promise对象，而`await`命令就是内部`then`命令的语法糖。
+进一步说，`async`函数完全可以看作多个异步操作，包装成的一个Promise对象，而`await`命令就是内部`then`命令的语法糖。
+
+### 语法
+
+`async`函数的语法规则总体上比较简单，难点是错误处理机制。
+
+（1）`async`函数返回一个Promise对象。
+
+`async`函数内部`return`语句返回的值，会成为`then`方法回调函数的参数。
+
+```javascript
+async function f() {
+  return 'hello world';
+}
+
+f().then(v => console.log(v))
+// "hello world"
+```
+
+上面代码中，函数`f`内部`return`命令返回的值，会被`then`方法回调函数接收到。
+
+`async`函数内部抛出错误，会导致返回的Promise对象变为`reject`状态。抛出的错误对象会被`catch`方法回调函数接收到。
+
+```javascript
+async function f() {
+  throw new Error('出错了');
+}
+
+f().then(
+  v => console.log(v),
+  e => console.log(e)
+)
+// Error: 出错了
+```
+
+（2）`async`函数返回的Promise对象，必须等到内部所有`await`命令的Promise对象执行完，才会发生状态改变。也就是说，只有`async`函数内部的异步操作执行完，才会执行`then`方法指定的回调函数。
+
+下面是一个例子。
+
+```javascript
+async function getTitle(url) {
+  let response = await fetch(url);
+  let html = await response.text();
+  return html.match(/<title>([\s\S]+)<\/title>/i)[1];
+}
+getTitle('https://tc39.github.io/ecma262/').then(console.log)
+// "ECMAScript 2017 Language Specification"
+```
+
+（3）正常情况下，`await`命令后面是一个Promise对象。如果不是，会被转成一个立即`resolve`的Promise对象。
+
+```javascript
+async function f() {
+  return await 123;
+}
+
+f().then(v => console.log(v))
+// 123
+```
+
+上面代码中，`await`命令的参数是数值`123`，它被转成Promise对象，并立即`resolve`。
+
+`await`命令后面的Promise对象如果变为`reject`状态，则`reject`的参数会被`catch`方法的回调函数接收到。
+
+```javascript
+async function f() {
+  await Promise.reject('出错了');
+}
+
+f()
+.then(v => console.log(v))
+.catch(e => console.log(e))
+// 出错了
+```
+
+注意，上面代码中，`await`语句前面没有`return`，但是`reject`方法的参数依然传入了`catch`方法的回调函数。这里如果在`await`前面加上`return`，效果是一样的。
+
+只要一个`await`语句后面的Promise变为`reject`，那么整个`async`函数都会中断执行。
+
+```javascript
+async function f() {
+  await Promise.reject('出错了');
+  await Promise.resolve('hello world'); // 不会执行
+}
+```
+
+上面代码中，第二个`await`语句是不会执行的，因为第一个`await`语句状态变成了`reject`。
+
+为了避免这个问题，可以将第一个`await`放在`try...catch`结构里面，这样第二个`await`就会执行。
+
+```javascript
+async function f() {
+  try {
+    await Promise.reject('出错了');
+  } catch(e) {
+  }
+  return await Promise.resolve('hello world');
+}
+
+f()
+.then(v => console.log(v))
+// hello world
+```
+
+另一种方法是`await`后面的Promise对象再跟一个`catch`方面，处理前面可能出现的错误。
+
+```javascript
+async function f() {
+  await Promise.reject('出错了')
+    .catch(e => console.log(e));
+  return await Promise.resolve('hello world');
+}
+
+f()
+.then(v => console.log(v))
+// 出错了
+// hello world
+```
+
+如果有多个`await`命令，可以统一放在`try...catch`结构中。
+
+```javascript
+async function main() {
+  try {
+    var val1 = await firstStep();
+    var val2 = await secondStep(val1);
+    var val3 = await thirdStep(val1, val2);
+
+    console.log('Final: ', val3);
+  }
+  catch (err) {
+    console.error(err);
+  }
+}
+```
+
+（4）如果`await`后面的异步操作出错，那么等同于`async`函数返回的Promise对象被`reject`。
+
+```javascript
+async function f() {
+  await new Promise(function (resolve, reject) {
+    throw new Error('出错了');
+  });
+}
+
+f()
+.then(v => console.log(v))
+.catch(e => console.log(e))
+// Error：出错了
+```
+
+上面代码中，`async`函数`f`执行后，`await`后面的Promise对象会抛出一个错误对象，导致`catch`方法的回调函数被调用，它的参数就是抛出的错误对象。具体的执行机制，可以参考后文的“async函数的实现”。
+
+防止出错的方法，也是将其放在`try...catch`代码块之中。
+
+```javascript
+async function f() {
+  try {
+    await new Promise(function (resolve, reject) {
+      throw new Error('出错了');
+    });
+  } catch(e) {
+  }
+  return await('hello world');
+}
+```
 
 ### async函数的实现
 
@@ -770,9 +980,9 @@ function fn(args){
 }
 ```
 
-所有的 async 函数都可以写成上面的第二种形式，其中的 spawn 函数就是自动执行器。
+所有的`async`函数都可以写成上面的第二种形式，其中的 spawn 函数就是自动执行器。
 
-下面给出 spawn 函数的实现，基本就是前文自动执行器的翻版。
+下面给出`spawn`函数的实现，基本就是前文自动执行器的翻版。
 
 ```javascript
 function spawn(genF) {
@@ -798,11 +1008,11 @@ function spawn(genF) {
 }
 ```
 
-async 函数是非常新的语法功能，新到都不属于 ES6，而是属于 ES7。目前，它仍处于提案阶段，但是转码器 Babel 和 regenerator 都已经支持，转码后就能使用。
+`async`函数是非常新的语法功能，新到都不属于 ES6，而是属于 ES7。目前，它仍处于提案阶段，但是转码器`Babel`和`regenerator`都已经支持，转码后就能使用。
 
 ### async 函数的用法
 
-同Generator函数一样，async函数返回一个Promise对象，可以使用then方法添加回调函数。当函数执行的时候，一旦遇到 await 就会先返回，等到触发的异步操作完成，再接着执行函数体内后面的语句。
+`async`函数返回一个Promise对象，可以使用`then`方法添加回调函数。当函数执行的时候，一旦遇到`await`就会先返回，等到触发的异步操作完成，再接着执行函数体内后面的语句。
 
 下面是一个例子。
 
@@ -813,12 +1023,12 @@ async function getStockPriceByName(name) {
   return stockPrice;
 }
 
-getStockPriceByName('goog').then(function (result){
+getStockPriceByName('goog').then(function (result) {
   console.log(result);
 });
 ```
 
-上面代码是一个获取股票报价的函数，函数前面的async关键字，表明该函数内部有异步操作。调用该函数时，会立即返回一个Promise对象。
+上面代码是一个获取股票报价的函数，函数前面的`async`关键字，表明该函数内部有异步操作。调用该函数时，会立即返回一个`Promise`对象。
 
 下面的例子，指定多少毫秒后输出一个值。
 
@@ -839,6 +1049,22 @@ asyncPrint('hello world', 50);
 
 上面代码指定50毫秒以后，输出"hello world"。
 
+Async函数有多种使用形式。
+
+```javascript
+// 函数声明
+async function foo() {}
+
+// 函数表达式
+const foo = async function () {};
+
+// 对象的方法
+let obj = { async foo() {} };
+
+// 箭头函数
+const foo = async () => {};
+```
+
 ### 注意点
 
 第一点，`await`命令后面的Promise对象，运行结果可能是rejected，所以最好把`await`命令放在`try...catch`代码块中。
@@ -855,7 +1081,8 @@ async function myFunction() {
 // 另一种写法
 
 async function myFunction() {
-  await somethingThatReturnsAPromise().catch(function (err){
+  await somethingThatReturnsAPromise()
+  .catch(function (err) {
     console.log(err);
   };
 }
@@ -966,11 +1193,11 @@ function chainAnimationsPromise(elem, animations) {
   var p = Promise.resolve();
 
   // 使用then方法，添加所有动画
-  for(var anim in animations) {
+  for(var anim of animations) {
     p = p.then(function(val) {
       ret = val;
       return anim(elem);
-    })
+    });
   }
 
   // 返回一个部署了错误捕捉机制的Promise
@@ -999,7 +1226,7 @@ function chainAnimationsGenerator(elem, animations) {
     } catch(e) {
       /* 忽略错误，继续执行 */
     }
-      return ret;
+    return ret;
   });
 
 }
